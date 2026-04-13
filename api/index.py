@@ -5,9 +5,10 @@ import random
 import json
 import os
 import sys
-root_path = os.path.abspath(__file__)
-root_path = '/'.join(root_path.split('/')[:-2])
-sys.path.append(root_path)
+
+# Fix path for Vercel
+root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, root_path)
 
 from utils.init import RssblogSource, SOURCE_BASE
 from utils.generator import generator
@@ -17,21 +18,35 @@ from utils.meta import meta
 from utils.markdown import markdown
 
 print("init rssblog source")
-rs = RssblogSource()
-print("init rssblog source done")
+try:
+    rs = RssblogSource()
+    print("init rssblog source done")
+except Exception as e:
+    print(f"init rssblog source failed: {e}")
+    rs = None
 
 print("init flask")
-app = Flask(__name__, static_folder="../static",
-            template_folder="../templates")
+app = Flask(__name__, 
+            static_folder=os.path.join(root_path, "static"),
+            template_folder=os.path.join(root_path, "templates"))
 print("init flask done")
 
 print("init markdown")
 Markdown(app, extensions=['fenced_code'])
-md = markdown("./README.md", locale=True)
+readme_path = os.path.join(root_path, "README.md")
+md = markdown(readme_path, locale=True) if os.path.exists(readme_path) else ""
 print("init markdown done")
 
 print("init meta")
-meta = meta()
+try:
+    meta_data = meta()
+except Exception as e:
+    print(f"init meta failed: {e}")
+    meta_data = {
+        'timestamp': time.time(),
+        'updatetime': datetime.now().isoformat(),
+        'today': datetime.now().strftime('%Y-%m-%d')
+    }
 print("init meta done")
 
 
@@ -53,27 +68,30 @@ def gen_pagination(page, pages):
 
 @app.template_filter("is_today")
 def is_today(date):
-    return meta["today"] == date
+    return meta_data["today"] == date
 
 
 @app.template_filter("is_in24h")
 def is_in24h(timestamp):
-    return abs(meta["timestamp"] - timestamp) < 24 * 60 * 60
-
-
-# default url
+    return abs(meta_data["timestamp"] - timestamp) < 24 * 60 * 60
 
 
 @app.errorhandler(404)
 def not_found(id):
-    page = random.randint(1, rs.url["all"])
-    url = (SOURCE_BASE + 'all/{}.csv').format(page)
-    data = parser(fetch(url))
-    return render_template('404.html',
-                           id=id,
-                           data=data,
-                           meta=meta,
-                           val=int(time.time())), 404
+    if rs is None:
+        return "Service unavailable", 503
+    try:
+        page = random.randint(1, rs.url["all"])
+        url = (SOURCE_BASE + 'all/{}.csv').format(page)
+        data = parser(fetch(url))
+        return render_template('404.html',
+                               id=id,
+                               data=data,
+                               meta=meta_data,
+                               val=int(time.time())), 404
+    except Exception as e:
+        print(f"404 handler error: {e}")
+        return "Not found", 404
 
 
 @app.route('/')
@@ -82,7 +100,13 @@ def home_default():
 
 
 @app.route('/<int:page>/')
-def home(page=1, id=None, pages=rs.url["all"], base_url='all', endpoint='home'):
+def home(page=1, id=None, pages=None, base_url='all', endpoint='home'):
+    if rs is None:
+        return "Service unavailable - Failed to initialize data source", 503
+    
+    if pages is None:
+        pages = rs.url["all"]
+    
     if page > int(pages):
         abort(404)
     url = (SOURCE_BASE + base_url + '/{}.csv').format(page)
@@ -97,7 +121,7 @@ def home(page=1, id=None, pages=rs.url["all"], base_url='all', endpoint='home'):
 
     return render_template('home.html',
                            data=data,
-                           meta=meta,
+                           meta=meta_data,
                            id=id,
                            pagination=gen_pagination(page, pages),
                            endpoint=endpoint,
@@ -110,14 +134,20 @@ def member_default():
 
 
 @app.route('/member/<int:page>/')
-def member(page=1, id=None, pages=rs.url["member"], base_url='member', endpoint='member'):
+def member(page=1, id=None, pages=None, base_url='member', endpoint='member'):
+    if rs is None:
+        return "Service unavailable", 503
+    
+    if pages is None:
+        pages = rs.url["member"]
+    
     if page > int(pages):
         abort(404)
     url = (SOURCE_BASE + base_url + '/{}.csv').format(page)
     data = hash_url(parser(fetch(url)))
     return render_template('member.html',
                            data=data,
-                           meta=meta,
+                           meta=meta_data,
                            id=id,
                            pagination=gen_pagination(page, pages),
                            endpoint=endpoint,
@@ -131,6 +161,9 @@ def member_home_default(hash_url, page=1):
 
 @app.route('/member/<string:hash_url>/<int:page>/')
 def member_home(hash_url, page=1, id=None, base_url='source', endpoint='member_home'):
+    if rs is None:
+        return "Service unavailable", 503
+    
     if hash_url not in rs.url["source"].keys():
         abort(404)
     if page > rs.url["source"][hash_url]:
@@ -165,7 +198,7 @@ def member_home(hash_url, page=1, id=None, base_url='source', endpoint='member_h
 
     return render_template('home.html',
                            data=data,
-                           meta=meta,
+                           meta=meta_data,
                            id=id,
                            pagination=gen_pagination(
                                page, rs.url["source"][hash_url]),
@@ -175,10 +208,16 @@ def member_home(hash_url, page=1, id=None, base_url='source', endpoint='member_h
 
 
 @app.route('/date/')
-def date(data=rs.url['date'], id=None):
+def date(data=None, id=None):
+    if rs is None:
+        return "Service unavailable", 503
+    
+    if data is None:
+        data = rs.url['date']
+    
     return render_template('date.html',
                            data=data,
-                           meta=meta,
+                           meta=meta_data,
                            id=id,
                            val=int(time.time()))
 
@@ -189,7 +228,13 @@ def date_year_month_default(y, m):
 
 
 @app.route('/date/<int:y>/<int:m>/<int:page>/')
-def date_year_month(y, m, page=1, id=None, date=rs.url["date"], base_url='date', endpoint='date_year_month', kwargs=None):
+def date_year_month(y, m, page=1, id=None, date=None, base_url='date', endpoint='date_year_month', kwargs=None):
+    if rs is None:
+        return "Service unavailable", 503
+    
+    if date is None:
+        date = rs.url["date"]
+    
     year_ok = None
     for year in date:
         if year['year'] == y:
@@ -212,7 +257,7 @@ def date_year_month(y, m, page=1, id=None, date=rs.url["date"], base_url='date',
     data = parser(fetch(url))
     return render_template('home.html',
                            data=data,
-                           meta=meta,
+                           meta=meta_data,
                            id=id,
                            pagination=gen_pagination(
                                page, year_ok['month'][m]),
@@ -226,7 +271,7 @@ def about():
     abort(404)
     return render_template('about.html',
                            data=md,
-                           meta=meta,
+                           meta=meta_data,
                            val=int(time.time()))
 
 
@@ -238,8 +283,10 @@ def rss(base_url='all'):
 
 @app.route('/immediate/')
 def immediate():
+    if rs is None:
+        return "Service unavailable", 503
     rs.immediate()
-    return 200
+    return "OK", 200
 
 
 # ### custom url
@@ -252,6 +299,9 @@ def user_home_default(id):
 
 @app.route('/<id>/<int:page>/')
 def user_home(id, page=1):
+    if rs is None:
+        return "Service unavailable", 503
+    
     user_ok = False
     for user in rs.url["user"]:
         if id == user["user"]:
@@ -273,6 +323,9 @@ def user_member_default(id):
 
 @app.route('/<id>/member/<int:page>/')
 def user_member(id, page=1):
+    if rs is None:
+        return "Service unavailable", 503
+    
     user_ok = False
     for user in rs.url["user"]:
         if id == user["user"]:
@@ -294,6 +347,9 @@ def user_member_home_default(id, hash_url):
 
 @app.route('/<id>/member/<string:hash_url>/<int:page>/')
 def user_member_home(id, hash_url, page=1):
+    if rs is None:
+        return "Service unavailable", 503
+    
     user_ok = False
     for user in rs.url["user"]:
         if id == user["user"]:
@@ -309,6 +365,9 @@ def user_member_home(id, hash_url, page=1):
 
 @app.route('/<id>/date/')
 def user_date(id):
+    if rs is None:
+        return "Service unavailable", 503
+    
     user_ok = False
     for user in rs.url["user"]:
         if id == user["user"]:
@@ -326,6 +385,9 @@ def user_date_year_month_default(id, y, m):
 
 @app.route('/<id>/date/<int:y>/<int:m>/<int:page>/')
 def user_date_year_month(id, y, m, page=1):
+    if rs is None:
+        return "Service unavailable", 503
+    
     user_ok = False
     for user in rs.url["user"]:
         if id == user["user"]:
@@ -345,6 +407,9 @@ def user_date_year_month(id, y, m, page=1):
 
 @app.route('/<id>/rss/')
 def user_rss(id):
+    if rs is None:
+        return "Service unavailable", 503
+    
     user_ok = False
     for user in rs.url["user"]:
         if id == user["user"]:
@@ -353,7 +418,3 @@ def user_rss(id):
     if not user_ok:
         abort(404, id)
     return rss(base_url='user/' + user_ok['user']+'/all')
-
-
-if __name__ == '__main__':
-    app.run()

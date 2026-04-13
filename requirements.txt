@@ -4,5 +4,4 @@ Flask-Markdown
 pytz
 requests
 pandas
-buffercache
-Werkzeug
+Werkzeug==2.3.7
