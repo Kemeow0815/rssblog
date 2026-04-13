@@ -4,7 +4,7 @@ import PyRSS2Gen
 def generator(data):
     rss =PyRSS2Gen.RSS2(
         title="RSSBlog",
-        link="https://rssblog.cn/",
+        link="https://rssblog.268682.xyz/",
         description="A Site for Blog RSS.",
         lastBuildDate = datetime.datetime.now(),
 

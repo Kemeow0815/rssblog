@@ -5,6 +5,7 @@ import random
 import json
 import os
 import sys
+from datetime import datetime
 
 # Fix path for Vercel
 root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -418,3 +419,8 @@ def user_rss(id):
     if not user_ok:
         abort(404, id)
     return rss(base_url='user/' + user_ok['user']+'/all')
+
+
+# 本地开发启动
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

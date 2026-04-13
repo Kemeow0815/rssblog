@@ -16,12 +16,12 @@ RSSBlog 是一个基于RSS的博客内容聚合站. 想法来源: [volfclub/trav
 
 #### 提交
 
-一般情况下，贴上你的订阅链接即可，通过提交[issue](https://github.com/caibingcheng/rssblog/issues)：
+一般情况下，贴上你的订阅链接即可，通过提交[issue](https://github.com/Kemeow0815/rssblog/issues)：
 ```
 "https://imcbc.cn/index.xml"
 ```
 
-提交的[issue](https://github.com/caibingcheng/rssblog/issues)将经过人工筛选, 以保证内容干净.
+提交的[issue](https://github.com/Kemeow0815/rssblog/issues)将经过人工筛选, 以保证内容干净.
 
 #### RSS接力
 
