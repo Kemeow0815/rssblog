@@ -33,7 +33,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
-          GIST_ID: adf8f300dc50a61a965bdcc6ef0aecb3
+          GIST_ID: 5f4b704a940c409718cf65b3b5f10102
           COMMENT_BODY: ${{ github.event.comment.body }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REPO_FULL_NAME: ${{ github.repository }}
