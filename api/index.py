@@ -421,6 +421,39 @@ def user_rss(id):
     return rss(base_url='user/' + user_ok['user']+'/all')
 
 
+@app.route('/api/random-article')
+def random_article():
+    """返回随机一篇文章的链接"""
+    if rs is None:
+        return json.dumps({"error": "Service unavailable"}), 503, {'Content-Type': 'application/json'}
+    
+    try:
+        # 获取总页数
+        total_pages = rs.url["all"]
+        if total_pages == 0:
+            return json.dumps({"error": "No articles available"}), 404, {'Content-Type': 'application/json'}
+        
+        # 随机选择一页
+        random_page = random.randint(1, total_pages)
+        url = (SOURCE_BASE + 'all/{}.csv').format(random_page)
+        data = parser(fetch(url))
+        
+        if not data or len(data) == 0:
+            return json.dumps({"error": "No articles found"}), 404, {'Content-Type': 'application/json'}
+        
+        # 从该页随机选择一篇文章
+        random_article = random.choice(data)
+        
+        return json.dumps({
+            "link": random_article.get("link"),
+            "title": random_article.get("title"),
+            "author": random_article.get("author")
+        }), 200, {'Content-Type': 'application/json'}
+    except Exception as e:
+        print(f"Random article error: {e}")
+        return json.dumps({"error": str(e)}), 500, {'Content-Type': 'application/json'}
+
+
 # 本地开发启动
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
