@@ -4,7 +4,7 @@ import time
 import requests
 # SOURCE_BASE = "https://gitee.com/caibingcheng/rssblog-source/raw/public/"
 # SOURCE_BASE = "https://raw.githubusercontent.com/caibingcheng/rssblog-source/public/"
-SOURCE_BASE = "https://cdn.jsdelivr.net/gh/Kemeow0815/rssblog-source@public/"
+SOURCE_BASE = "https://jsd.268682.xyz/gh/Kemeow0815/rssblog-source@public/"
 SOURCE_URL = SOURCE_BASE + "stats.min.json"
 
 
